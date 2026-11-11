@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>RAG</title>
+</head>
+
+<body>
+    <textarea id="input" placeholder="输入问题"></textarea>
+    <button id="btn">点我</button>
+    <p id="out"></p>
+    <h4>答案：</h4>
+    <p id="answer"></p>
+    <h4>出处：</h4>
+    <p id="sources"></p>
+
+    <script>
+        // 获取页面元素
+        const btn = document.getElementById("btn");
+        const inputArea = document.getElementById("input");
+        const outP = document.getElementById("out");
+        const answer = document.getElementById("answer");
+        const sources = document.getElementById("sources");
+
+        btn.addEventListener("click", async function () {
+            // 获取输入内容
+            const question = inputArea.value.trim();
+            if (!question) {
+                outP.innerText = "请先输入问题！";
+                return;
+            }
+
+            btn.disabled = true;  // 禁用按钮，防止重复点击
+            outP.innerText = "正在处理...";  // 显示处理状态
+
+            try {
+                // 向后端的 /ask 接口发送 POST 请求，把用户的问题传过去
+                const response = await fetch("/ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ "question": question })
+                });
+
+                // 将后端返回的响应体解析为 JSON 对象
+                const data = await response.json()
+
+                // 检查响应状态，如果不是 200-299，说明后端报错了
+                if (!response.ok) {
+                    outP.innerText = "请求失败：" + (data.detail || response.status);
+                    return;
+                }
+
+                // 清空之前的错误提示或加载提示
+                outP.innerText = "";
+
+                // 显示 AI 生成的最终回答
+                answer.innerText = data.answer
+
+                // 拼接“参考资料”的展示内容
+                let content = ""
+                for (let i = 0; i < data.sources.length; i++) {
+                    content += "[" + (i + 1) + "]：" + data.sources[i] + "\n\n"
+                }
+                sources.innerText = content
+
+            } catch (e) {
+                outP.innerText = "请求异常：" + e.message;
+            } finally {
+                btn.disabled = false;  // 恢复按钮状态
+            }
+        });
+    </script>
+</body>
+
+</html>
